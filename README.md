@@ -71,6 +71,16 @@ Setgreet.identifyUser(
 )
 ```
 
+### Reset User
+
+Clears user identification data and resets user session state for logout scenarios.
+
+**Example:**
+
+```kotlin
+Setgreet.resetUser()
+```
+
 ### Show Flow
 - Setgreet Flow ID: The flow ID is a unique identifier for the flow you want to show. You can get the flow ID from the flow's URL at the web app. For example, if the flow URL is `https://app.setgreet.com/flows/1234`, the flow ID is `1234`.
 
