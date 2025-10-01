@@ -56,6 +56,7 @@ Identifies a user for Setgreet analytics and flow management.
 - `userId` (String): The unique identifier for the user
 - `attributes` (Optional): Additional user attributes
 - `operation` (Optional): The operation type for user attributes (CREATE or UPDATE)
+- `locale` (Optional): User's locale (e.g., "en-US"). If not provided, uses device's default locale
 
 **Example:**
 
@@ -67,7 +68,8 @@ Setgreet.identifyUser(
         "email" to "john@example.com",
         "plan" to "premium"
     ),
-    operation = Operation.CREATE
+    operation = Operation.CREATE,
+    locale = "en-US"
 )
 ```
 
