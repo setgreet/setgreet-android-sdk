@@ -2,6 +2,8 @@ package com.setgreet.example
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,9 +36,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Setup flow event callbacks
+        setupFlowCallbacks()
+
         setContent {
             val context = LocalContext.current
-            val scope = rememberCoroutineScope()
 
             ExampleTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -52,6 +56,66 @@ class MainActivity : ComponentActivity() {
                         MainContent(context)
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Example of setting up flow callbacks using the DSL style API.
+     * This demonstrates how to receive all flow lifecycle events.
+     */
+    private fun setupFlowCallbacks() {
+        Setgreet.setFlowCallbacks {
+            onFlowStarted { event ->
+                Log.d(
+                    "SetgreetExample",
+                    "Flow started: ${event.flowId} with ${event.screenCount} screens"
+                )
+            }
+
+            onFlowCompleted { event ->
+                Log.d("SetgreetExample", "Flow completed: ${event.flowId} in ${event.durationMs}ms")
+                runOnUiThread {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Flow completed!",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            onFlowDismissed { event ->
+                Log.d(
+                    "SetgreetExample",
+                    "Flow dismissed: ${event.flowId} reason=${event.reason} at screen ${event.screenIndex + 1}"
+                )
+            }
+
+            onScreenChanged { event ->
+                Log.d(
+                    "SetgreetExample",
+                    "Screen changed: ${event.fromIndex + 1} -> ${event.toIndex + 1}"
+                )
+            }
+
+            onActionTriggered { event ->
+                Log.d(
+                    "SetgreetExample",
+                    "Action triggered: ${event.actionType}, customEvent=${event.actionName}"
+                )
+                event.actionName?.let { customEvent ->
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Custom event: $customEvent",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+
+            onError { event ->
+                Log.e("SetgreetExample", "Flow error: ${event.errorType} - ${event.message}")
             }
         }
     }

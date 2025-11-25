@@ -126,7 +126,6 @@ Tracks custom events for analytics and flow triggers.
 **Example:**
 
 ```kotlin
-// Android
 Setgreet.trackEvent(
     eventName = "purchase_completed",
     properties = mapOf(
@@ -137,3 +136,62 @@ Setgreet.trackEvent(
     )
 )
 ```
+
+## Flow Callbacks
+
+The SDK provides callbacks for monitoring flow lifecycle events.
+
+```kotlin
+Setgreet.setFlowCallbacks {
+    onFlowStarted { event ->
+        Log.d("Setgreet", "Flow ${event.flowId} started with ${event.screenCount} screens")
+    }
+
+    onFlowCompleted { event ->
+        // User completed the flow (reached last screen)
+        Analytics.log("flow_completed", mapOf(
+            "flow_id" to event.flowId,
+            "duration_ms" to event.durationMs
+        ))
+    }
+
+    onFlowDismissed { event ->
+        // User dismissed the flow before completion
+        Log.d("Setgreet", "Flow dismissed: ${event.reason} at screen ${event.screenIndex + 1}")
+    }
+
+    onScreenChanged { event ->
+        Log.d("Setgreet", "Screen changed: ${event.fromIndex + 1} -> ${event.toIndex + 1}")
+    }
+
+    onActionTriggered { event ->
+        // User tapped a button - includes custom events from dashboard
+        event.actionName?.let { customEvent ->
+            Analytics.log(customEvent)
+        }
+    }
+
+    onError { event ->
+        Log.e("Setgreet", "Error: ${event.errorType} - ${event.message}")
+    }
+}
+```
+
+### Event Types
+
+| Event | Description | Key Properties |
+|-------|-------------|----------------|
+| `FlowStarted` | Flow begins presenting | `flowId`, `screenCount` |
+| `FlowCompleted` | User completes the flow | `flowId`, `durationMs` |
+| `FlowDismissed` | Flow dismissed before completion | `flowId`, `reason`, `screenIndex` |
+| `ScreenChanged` | User navigates between screens | `fromIndex`, `toIndex` |
+| `ActionTriggered` | Button action triggered | `actionType`, `actionName` |
+| `FlowError` | Error during flow operations | `errorType`, `message` |
+
+### Dismiss Reasons
+
+- `USER_CLOSE` - User tapped the close button
+- `USER_SKIP` - User tapped the skip button
+- `BACK_PRESS` - User pressed the back button
+- `REPLACED` - Flow was replaced by another flow
+- `PROGRAMMATIC` - Flow was closed programmatically
