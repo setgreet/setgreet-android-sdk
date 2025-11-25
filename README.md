@@ -26,9 +26,9 @@ dependencies {
 ## Usage
 
 ### Initialization
-- Setgreet App Key: You can get the app key while creating a new app in the Setgreet flow editor.
+- Setgreet App Key: You can find your App Key at [Apps page](https://app.setgreet.com/apps).
 
-Initialize the SDK in your Application class:
+Initialize the SDK in your Application class or where you want:
 
 ```Kotlin
 class MyApplication : Application() {
