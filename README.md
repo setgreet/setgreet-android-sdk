@@ -171,6 +171,10 @@ Setgreet.setFlowCallbacks {
         }
     }
 
+    onPermissionRequested { event ->
+        Log.d("Setgreet", "Permission ${event.permissionType}: ${event.result}")
+    }
+
     onError { event ->
         Log.e("Setgreet", "Error: ${event.errorType} - ${event.message}")
     }
@@ -186,7 +190,26 @@ Setgreet.setFlowCallbacks {
 | `FlowDismissed` | Flow dismissed before completion | `flowId`, `reason`, `screenIndex` |
 | `ScreenChanged` | User navigates between screens | `fromIndex`, `toIndex` |
 | `ActionTriggered` | Button action triggered | `actionType`, `actionName` |
+| `PermissionRequested` | Permission request completed | `permissionType`, `result` |
 | `FlowError` | Error during flow operations | `errorType`, `message` |
+
+### Permission Types
+
+| Type | Description |
+|------|-------------|
+| `notification` | Push notification permission |
+| `location` | Location access permission |
+| `camera` | Camera access permission |
+
+### Permission Results
+
+| Result | Description |
+|--------|-------------|
+| `granted` | Permission was granted by the user |
+| `denied` | Permission was denied by the user |
+| `permanently_denied` | Permission was permanently denied |
+| `already_granted` | Permission was already granted |
+| `not_required` | Permission request was not required |
 
 ### Dismiss Reasons
 

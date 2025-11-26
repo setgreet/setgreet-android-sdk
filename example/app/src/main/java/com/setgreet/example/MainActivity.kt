@@ -114,6 +114,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            onPermissionRequested { event ->
+                Log.d(
+                    "SetgreetExample",
+                    "Permission requested: ${event.permissionType}, result=${event.result}"
+                )
+            }
+
             onError { event ->
                 Log.e("SetgreetExample", "Flow error: ${event.errorType} - ${event.message}")
             }
