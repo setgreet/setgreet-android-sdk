@@ -1,13 +1,17 @@
 # Setgreet Android SDK
+
 [![Maven Central](https://img.shields.io/maven-central/v/com.setgreet/setgreet.svg?label=maven%20central)](#)
 
 Setgreet Android SDK allows you to show Setgreet flows in your Android app.
 
 ## Requirements
-- Android 5.0 (API level 21) and above
+
+- Android 6.0 (API level 23) and above
 
 ## Installation
+
 Add mavenCentral() to your project's build.gradle.kts file:
+
 ```gradle.kts
 allprojects {
     repositories {
@@ -17,6 +21,7 @@ allprojects {
 ```
 
 Add the following to your app's build.gradle.kts file:
+
 ```gradle.kts
 dependencies {
     implementation("com.setgreet:setgreet:LATEST_VERSION")
@@ -26,13 +31,14 @@ dependencies {
 ## Usage
 
 ### Initialization
+
 - Setgreet App Key: You can find your App Key at [Apps page](https://app.setgreet.com/apps).
 
 Initialize the SDK in your Application class or where you want:
 
-```Kotlin
+```kotlin
 class MyApplication : Application() {
-    
+
     override fun onCreate() {
         super.onCreate()
 
@@ -75,7 +81,7 @@ Setgreet.identifyUser(
 
 ### Reset User
 
-Clears user identification data and resets user session state for logout scenarios.
+Clears user identification data and resets user session state for logout scenarios. A new anonymous ID is generated after reset.
 
 **Example:**
 
@@ -83,12 +89,21 @@ Clears user identification data and resets user session state for logout scenari
 Setgreet.resetUser()
 ```
 
+### Anonymous ID
+
+The SDK automatically generates an anonymous ID on initialization, which persists across app launches. When `identifyUser` is called, the anonymous identity is merged with the identified user. A new anonymous ID is generated when `resetUser()` is called.
+
+```kotlin
+val anonId = Setgreet.anonymousId
+```
+
 ### Show Flow
+
 - Setgreet Flow ID: The flow ID is a unique identifier for the flow you want to show. You can get the flow ID from the flow's URL at the web app. For example, if the flow URL is `https://app.setgreet.com/flows/1234`, the flow ID is `1234`.
 
 To show the Setgreet flow, call the following method:
 
-```Kotlin
+```kotlin
 Setgreet.showFlow(flowId = "FLOW_ID")
 ```
 
@@ -139,7 +154,19 @@ Setgreet.trackEvent(
 
 ## Flow Callbacks
 
-The SDK provides callbacks for monitoring flow lifecycle events.
+Listen to flow lifecycle events to track user interactions and flow completion.
+
+**Available Callbacks:**
+
+- `onFlowStarted`: Called when a flow begins displaying
+- `onFlowCompleted`: Called when user completes all screens in the flow
+- `onFlowDismissed`: Called when user dismisses the flow before completion
+- `onScreenChanged`: Called when user navigates between screens
+- `onActionTriggered`: Called when user interacts with buttons
+- `onPermissionRequested`: Called when a permission request completes
+- `onError`: Called when an error occurs during flow operations
+
+**Example:**
 
 ```kotlin
 Setgreet.setFlowCallbacks {
@@ -148,15 +175,10 @@ Setgreet.setFlowCallbacks {
     }
 
     onFlowCompleted { event ->
-        // User completed the flow (reached last screen)
-        Analytics.log("flow_completed", mapOf(
-            "flow_id" to event.flowId,
-            "duration_ms" to event.durationMs
-        ))
+        Log.d("Setgreet", "Flow completed: ${event.flowId}, duration: ${event.durationMs}ms")
     }
 
     onFlowDismissed { event ->
-        // User dismissed the flow before completion
         Log.d("Setgreet", "Flow dismissed: ${event.reason} at screen ${event.screenIndex + 1}")
     }
 
@@ -165,9 +187,9 @@ Setgreet.setFlowCallbacks {
     }
 
     onActionTriggered { event ->
-        // User tapped a button - includes custom events from dashboard
+        Log.d("Setgreet", "Action: ${event.actionType}")
         event.actionName?.let { customEvent ->
-            Analytics.log(customEvent)
+            Log.d("Setgreet", "Custom event name: $customEvent")
         }
     }
 
@@ -184,7 +206,7 @@ Setgreet.setFlowCallbacks {
 ### Event Types
 
 | Event | Description | Key Properties |
-|-------|-------------|----------------|
+| ----- | ----------- | -------------- |
 | `FlowStarted` | Flow begins presenting | `flowId`, `screenCount` |
 | `FlowCompleted` | User completes the flow | `flowId`, `durationMs` |
 | `FlowDismissed` | Flow dismissed before completion | `flowId`, `reason`, `screenIndex` |
@@ -193,10 +215,38 @@ Setgreet.setFlowCallbacks {
 | `PermissionRequested` | Permission request completed | `permissionType`, `result` |
 | `FlowError` | Error during flow operations | `errorType`, `message` |
 
+### Dismiss Reasons
+
+| Reason | Description |
+| ------ | ----------- |
+| `USER_CLOSE` | User tapped the close button |
+| `USER_SKIP` | User tapped the skip button |
+| `BACK_PRESS` | User pressed the back button |
+| `SWIPE_DOWN` | User swiped down to dismiss |
+| `REPLACED` | Flow was replaced by another flow |
+| `PROGRAMMATIC` | Flow was closed programmatically |
+| `COMPLETED` | Flow reached its end node |
+
+### Action Types
+
+| Action | Description |
+| ------ | ----------- |
+| `NEXT` | Navigate to next screen |
+| `PREVIOUS` | Navigate to previous screen |
+| `SKIP` | Skip the current screen |
+| `DISMISS` | Close/dismiss the flow |
+| `URL` | Open a URL |
+| `REQUEST_NOTIFICATION_PERMISSION` | Request notification permission |
+| `REQUEST_LOCATION_PERMISSION` | Request location permission |
+| `REQUEST_CAMERA_PERMISSION` | Request camera permission |
+| `REQUEST_REVIEW` | Request Play Store review |
+| `SHARE` | Open share sheet |
+| `OPEN_SETTINGS` | Open app settings |
+
 ### Permission Types
 
 | Type | Description |
-|------|-------------|
+| ---- | ----------- |
 | `notification` | Push notification permission |
 | `location` | Location access permission |
 | `camera` | Camera access permission |
@@ -204,17 +254,24 @@ Setgreet.setFlowCallbacks {
 ### Permission Results
 
 | Result | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `granted` | Permission was granted by the user |
 | `denied` | Permission was denied by the user |
 | `permanently_denied` | Permission was permanently denied |
 | `already_granted` | Permission was already granted |
 | `not_required` | Permission request was not required |
 
-### Dismiss Reasons
+## Configuration
 
-- `USER_CLOSE` - User tapped the close button
-- `USER_SKIP` - User tapped the skip button
-- `BACK_PRESS` - User pressed the back button
-- `REPLACED` - Flow was replaced by another flow
-- `PROGRAMMATIC` - Flow was closed programmatically
+### SetgreetConfig
+
+```kotlin
+SetgreetConfig(
+    debugMode = false,          // Enable debug logging
+)
+```
+
+### Operation Types
+
+- `Operation.CREATE`: Create a new user record
+- `Operation.UPDATE`: Update an existing user record
