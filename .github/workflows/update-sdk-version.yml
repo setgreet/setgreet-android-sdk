@@ -1,0 +1,36 @@
+name: Update SDK Version
+
+on:
+  repository_dispatch:
+    types: [android-sdk-release]
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${{ github.event.client_payload.version }}" >> "$GITHUB_OUTPUT"
+
+      - name: Update example app SDK version
+        run: |
+          sed -i 's/implementation("com.setgreet:setgreet:[^"]*")/implementation("com.setgreet:setgreet:${{ steps.version.outputs.VERSION }}")/' example/app/build.gradle.kts
+
+      - name: Commit, tag, and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release ${{ steps.version.outputs.VERSION }}"
+          git tag "${{ steps.version.outputs.VERSION }}"
+          git push origin main --tags
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: ${{ steps.version.outputs.VERSION }}
+          generate_release_notes: true
