@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SDK_RELEASE_PAT }}
 
       - name: Extract version
         id: version
