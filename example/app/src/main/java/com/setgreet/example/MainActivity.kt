@@ -161,6 +161,7 @@ fun MainContent(context: Context) {
                 } else {
                     errorMessage = ""
                     sharedPreferences.edit { putString("flowId", flowId.text) }
+                    Setgreet.identifyUser("example-android-user")
                     Setgreet.showFlow(flowId.text)
                 }
             }
