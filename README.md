@@ -162,9 +162,12 @@ Listen to flow lifecycle events to track user interactions and flow completion.
 - `onFlowCompleted`: Called when user completes all screens in the flow
 - `onFlowDismissed`: Called when user dismisses the flow before completion
 - `onScreenChanged`: Called when user navigates between screens
-- `onActionTriggered`: Called when user interacts with buttons
+- `onActionTriggered`: Called when a button's action is triggered, just before it runs, so it arrives even when the action closes the flow, and even when required inputs on the screen then stop the action (see [Action Types](#action-types))
+- `onCustomAction`: Called when user taps a button whose action is Custom, with that action's data
+- `onTrackEvent`: Called when a button's Track Event action runs, with the event name and properties
 - `onPermissionRequested`: Called when a permission request completes
-- `onError`: Called when an error occurs during flow operations
+- `onPurchaseCompleted`, `onPurchaseCancelled`, `onPurchaseFailed`, `onPurchasePending`, `onRestoreCompleted`, `onRestoreFailed`: Called with the outcome of a paywall's purchase and restore buttons (see [Purchases and Paywalls](#purchases-and-paywalls))
+- `onError`: Called when a flow the SDK set out to show could not be shown (see [Flow Errors](#flow-errors))
 
 **Example:**
 
@@ -187,10 +190,11 @@ Setgreet.setFlowCallbacks {
     }
 
     onActionTriggered { event ->
-        Log.d("Setgreet", "Action: ${event.actionType}")
-        event.actionName?.let { customEvent ->
-            Log.d("Setgreet", "Custom event name: $customEvent")
-        }
+        Log.d("Setgreet", "Action: ${event.actionType} on screen ${event.screenIndex + 1}")
+    }
+
+    onCustomAction { event ->
+        Log.d("Setgreet", "Custom action: ${event.data}")
     }
 
     onPermissionRequested { event ->
@@ -203,6 +207,20 @@ Setgreet.setFlowCallbacks {
 }
 ```
 
+### Flow Listener
+
+`setFlowListener` receives every flow event as one `SetgreetFlowEvent` and works alongside `setFlowCallbacks`:
+
+```kotlin
+Setgreet.setFlowListener { event ->
+    when (event) {
+        is SetgreetFlowEvent.CustomAction -> Log.d("Setgreet", "Custom action: ${event.data}")
+        is SetgreetFlowEvent.TrackEvent -> Log.d("Setgreet", "Track event: ${event.eventName}")
+        else -> Unit
+    }
+}
+```
+
 ### Event Types
 
 | Event | Description | Key Properties |
@@ -211,9 +229,11 @@ Setgreet.setFlowCallbacks {
 | `FlowCompleted` | User completes the flow | `flowId`, `durationMs` |
 | `FlowDismissed` | Flow dismissed before completion | `flowId`, `reason`, `screenIndex` |
 | `ScreenChanged` | User navigates between screens | `fromIndex`, `toIndex` |
-| `ActionTriggered` | Button action triggered | `actionType`, `actionName` |
+| `ActionTriggered` | Button action triggered (before it runs) | `actionType`, `actionName`, `screenIndex` |
+| `CustomAction` | Custom button action tapped | `flowId`, `data`, `screenIndex` |
+| `TrackEvent` | Track Event button action ran | `eventName`, `properties` |
 | `PermissionRequested` | Permission request completed | `permissionType`, `result` |
-| `FlowError` | Error during flow operations | `errorType`, `message` |
+| `FlowError` | A flow failed to fetch, parse or display | `flowId`, `errorType`, `message` |
 
 ### Dismiss Reasons
 
@@ -229,19 +249,43 @@ Setgreet.setFlowCallbacks {
 
 ### Action Types
 
+`actionType` is an `ActionType`. Its name in lower case is the value every Setgreet SDK reports, for example `REQUEST_NOTIFICATION_PERMISSION` is `request_notification_permission`.
+
 | Action | Description |
 | ------ | ----------- |
 | `NEXT` | Navigate to next screen |
 | `PREVIOUS` | Navigate to previous screen |
-| `SKIP` | Skip the current screen |
-| `DISMISS` | Close/dismiss the flow |
+| `SKIP` | Skip the flow |
+| `DISMISS` | Close the flow |
 | `URL` | Open a URL |
 | `REQUEST_NOTIFICATION_PERMISSION` | Request notification permission |
 | `REQUEST_LOCATION_PERMISSION` | Request location permission |
 | `REQUEST_CAMERA_PERMISSION` | Request camera permission |
-| `REQUEST_REVIEW` | Request Play Store review |
-| `SHARE` | Open share sheet |
+| `REQUEST_TRACKING_PERMISSION` | Request tracking permission (always `not_required` on Android) |
+| `REQUEST_MICROPHONE_PERMISSION` | Request microphone permission |
+| `REQUEST_PHOTO_LIBRARY_PERMISSION` | Request photo library permission |
+| `REQUEST_REVIEW` | Request a Play Store review |
+| `SHARE` | Open the share sheet |
 | `OPEN_SETTINGS` | Open app settings |
+| `TRACK_EVENT` | Track an event; `actionName` is the event name |
+| `CUSTOM` | Custom action (also delivered to `onCustomAction`) |
+| `PURCHASE` | Purchase through your purchase provider |
+| `RESTORE_PURCHASES` | Restore purchases through your purchase provider |
+
+`actionName` is set only for `TRACK_EVENT`. An action that does nothing is not reported: `NONE` or an unknown action, a `URL` action with no target, or a purchase or restore button without its action. Auto-advance and option selection are not button actions.
+
+### Flow Errors
+
+`onError` fires when a flow the SDK set out to show does not show:
+
+| `errorType` | When |
+| ----------- | ---- |
+| `NETWORK` | The request failed, or the server answered with an error status |
+| `PARSE` | The response could not be parsed, or carried no flow |
+| `DISPLAY` | The flow could not be displayed (for example, no context before `initialize`) |
+| `UNKNOWN` | Anything else |
+
+It covers `showFlow`, a flow returned by `trackEvent`, `trackScreen` or `identifyUser` that cannot be parsed or displayed, and the display of every flow. A `trackEvent`, `trackScreen` or `identifyUser` request that fails before any response is only logged, because no flow is known to have matched. `flowId` is empty when the SDK never learned it. Purchase and restore failures have their own callbacks.
 
 ### Permission Types
 
@@ -250,6 +294,9 @@ Setgreet.setFlowCallbacks {
 | `notification` | Push notification permission |
 | `location` | Location access permission |
 | `camera` | Camera access permission |
+| `tracking` | App tracking (always `not_required` on Android) |
+| `microphone` | Microphone access permission |
+| `photoLibrary` | Photo library access permission |
 
 ### Permission Results
 
@@ -260,6 +307,54 @@ Setgreet.setFlowCallbacks {
 | `permanently_denied` | Permission was permanently denied |
 | `already_granted` | Permission was already granted |
 | `not_required` | Permission request was not required |
+
+## Permissions Setup
+
+If your flows use permission buttons, declare the matching permissions in your app's `AndroidManifest.xml`, and only those your flows actually ask for. For an undeclared permission Android shows no dialog, and the SDK reports `not_required`.
+
+```xml
+<!-- Notification permission (Android 13 and later) -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+<!-- Location permission -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+<!-- Camera permission -->
+<uses-permission android:name="android.permission.CAMERA" />
+
+<!-- Microphone permission -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+<!-- Photo library permission -->
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+```
+
+Tracking needs no declaration: on Android its button reports `not_required` and the flow moves on. Declaring `READ_MEDIA_IMAGES` can require a Photo and Video Permissions declaration in Google Play Console, so add it only if a flow uses a photo library button.
+
+## Purchases and Paywalls
+
+A paywall screen built in Setgreet sells through the purchase tool your app already uses, such as RevenueCat or Google Play Billing. Setgreet does not wrap that tool and never needs its API key: you implement `SetgreetPurchaseProvider` on top of it, then register it once, after configuring your tool and initializing Setgreet:
+
+```kotlin
+Setgreet.setPurchaseProvider(MyPurchaseProvider())
+
+// Or read a specific offering when a paywall names no source:
+Setgreet.setPurchaseProvider(MyPurchaseProvider(), SetgreetPurchaseSource.offering("onboarding"))
+```
+
+| Member | Purpose |
+| ------ | ------- |
+| `providerId` | A short name for your tool, such as `revenuecat` |
+| `loadProducts(source)` | Returns the products of a source (the current offering, an offering or a placement) |
+| `purchase(activity, productRef, source)` | Buys a product: `PURCHASED`, `CANCELLED`, `PENDING` or `FAILED` |
+| `restorePurchases()` | Restores purchases: `RESTORED`, `NOTHING_TO_RESTORE` or `FAILED` |
+| `accessState()` | What the user already has access to, or `null` when your tool cannot say |
+| `trackPaywallImpression(context)` | Forwards a paywall view to your tool |
+| `setAttributes(attributes)` | Forwards user attributes to your tool |
+| `identify(userId)`, `reset()` | Optional: keep your tool's user in step with Setgreet |
+
+The paywall branches the flow on the outcome, and the purchase callbacks above report it to your app. The full guide, with a RevenueCat provider ready to copy, is at [setgreet.com/docs/sdk/purchases](https://setgreet.com/docs/sdk/purchases).
 
 ## Configuration
 
