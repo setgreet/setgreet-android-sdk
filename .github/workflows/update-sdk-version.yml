@@ -17,19 +17,27 @@ jobs:
 
       - name: Extract version
         id: version
-        run: echo "VERSION=${{ github.event.client_payload.version }}" >> "$GITHUB_OUTPUT"
+        env:
+          VERSION: ${{ github.event.client_payload.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::invalid version"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Update example app SDK version
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          sed -i 's/implementation("com.setgreet:setgreet:[^"]*")/implementation("com.setgreet:setgreet:${{ steps.version.outputs.VERSION }}")/' example/app/build.gradle.kts
+          sed -i 's/implementation("com.setgreet:setgreet:[^"]*")/implementation("com.setgreet:setgreet:'"$VERSION"'")/' example/app/build.gradle.kts
 
       - name: Commit, tag, and push
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Release ${{ steps.version.outputs.VERSION }}"
-          git tag "${{ steps.version.outputs.VERSION }}"
+          git commit -m "Release $VERSION"
+          git tag "$VERSION"
           git push origin main --tags
 
       - name: Create GitHub Release
