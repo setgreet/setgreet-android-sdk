@@ -57,5 +57,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    implementation("com.setgreet:setgreet:1.10.0")
+    implementation("com.setgreet:setgreet:1.11.0")
 }
